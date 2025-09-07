@@ -4,6 +4,7 @@ Testing for export functions of decision trees (sklearn.tree.export).
 from re import finditer, search
 from textwrap import dedent
 
+import numpy as np
 from numpy.random import RandomState
 
 from sklearn.base import is_classifier
@@ -395,6 +396,36 @@ def test_export_text():
     """).lstrip()
     assert export_text(reg, decimals=1) == expected_report
     assert export_text(reg, decimals=1, show_weights=True) == expected_report
+
+
+def test_export_text_single_feature():
+    # Test for issue where export_text would raise IndexError
+    # when tree has only one feature
+    # See: https://github.com/scikit-learn/scikit-learn/issues/14053
+    
+    # Create data with only one feature
+    X_single = np.array([[-2], [-1], [-1], [1], [1], [2]])
+    y_single = np.array([-1, -1, -1, 1, 1, 1])
+    
+    # Train a classifier with only one feature
+    clf = DecisionTreeClassifier(max_depth=2, random_state=0)
+    clf.fit(X_single, y_single)
+    
+    # Test export_text with feature_names (this used to raise IndexError)
+    result = export_text(clf, feature_names=['feature_0'])
+    assert isinstance(result, str)
+    assert 'feature_0' in result
+    
+    # Test export_text without feature_names (this used to work)
+    result = export_text(clf)
+    assert isinstance(result, str)
+    assert 'feature_0' in result
+    
+    # Test with show_weights
+    result = export_text(clf, feature_names=['feature_0'], show_weights=True)
+    assert isinstance(result, str)
+    assert 'feature_0' in result
+    assert 'weights:' in result
 
 
 def test_plot_tree_entropy(pyplot):
